@@ -1,0 +1,80 @@
+---
+# tasks/verify.yml — post-deploy smoke checks
+
+- name: "Gather systemd service facts: influxdb3-{{ influxdb3_instance_name }}"
+  ansible.builtin.systemd:
+    name: "influxdb3-{{ influxdb3_instance_name }}.service"
+    scope: user
+  register: _verify_svc_facts
+  become: true
+  become_user: "{{ influxdb3_service_user }}"
+  changed_when: false
+
+- name: Assert service is active
+  ansible.builtin.assert:
+    that:
+      - _verify_svc_facts.status.ActiveState == "active"
+    fail_msg: "influxdb3-{{ influxdb3_instance_name }}.service is not active: {{ _verify_svc_facts.status.ActiveState }}"
+    success_msg: "Service is active ✓"
+
+- name: Stat container unit file
+  ansible.builtin.stat:
+    path: "{{ influxdb3_quadlet_dir | expanduser }}/influxdb3-{{ influxdb3_instance_name }}.container"
+  register: _verify_container_stat
+  become: true
+  become_user: "{{ influxdb3_service_user }}"
+
+- name: Stat volume unit file
+  ansible.builtin.stat:
+    path: "{{ influxdb3_quadlet_dir | expanduser }}/influxdb3-{{ influxdb3_instance_name }}.volume"
+  register: _verify_volume_stat
+  become: true
+  become_user: "{{ influxdb3_service_user }}"
+
+- name: Stat network unit file
+  ansible.builtin.stat:
+    path: "{{ influxdb3_quadlet_dir | expanduser }}/{{ influxdb3_shared_network_name }}.network"
+  register: _verify_network_stat
+  become: true
+  become_user: "{{ influxdb3_service_user }}"
+
+- name: Stat environment file
+  ansible.builtin.stat:
+    path: "{{ influxdb3_env_file_path | expanduser }}"
+  register: _verify_env_stat
+  become: true
+  become_user: "{{ influxdb3_service_user }}"
+
+- name: Assert all unit files and env file are present
+  ansible.builtin.assert:
+    that:
+      - _verify_container_stat.stat.exists
+      - _verify_volume_stat.stat.exists
+      - _verify_network_stat.stat.exists
+      - _verify_env_stat.stat.exists
+    fail_msg: "One or more required files are missing after deployment"
+    success_msg: "All unit files and env file present ✓"
+
+- name: Assert env file has restrictive permissions (0600)
+  ansible.builtin.assert:
+    that:
+      - _verify_env_stat.stat.mode == "0600"
+    fail_msg: "Env file mode is {{ _verify_env_stat.stat.mode }}, expected 0600"
+    success_msg: "Env file permissions are 0600 ✓"
+
+- name: Check that port is bound on loopback only (podman port)
+  ansible.builtin.command:
+    cmd: "podman port influxdb3-{{ influxdb3_instance_name }}"
+  register: _verify_port_output
+  become: true
+  become_user: "{{ influxdb3_service_user }}"
+  changed_when: false
+  failed_when: false
+
+- name: Assert loopback-only port binding
+  ansible.builtin.assert:
+    that:
+      - "'127.0.0.1:' ~ influxdb3_port in _verify_port_output.stdout"
+    fail_msg: "Expected loopback-only port binding 127.0.0.1:{{ influxdb3_port }} not found in: {{ _verify_port_output.stdout }}"
+    success_msg: "Port {{ influxdb3_port }} is bound on loopback only ✓"
+  when: _verify_port_output.rc == 0

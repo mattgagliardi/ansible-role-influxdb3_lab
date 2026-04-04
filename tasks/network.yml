@@ -1,0 +1,28 @@
+---
+# tasks/network.yml — provision the shared Podman network Quadlet unit
+
+- name: Ensure Quadlet unit directory exists for service user
+  ansible.builtin.file:
+    path: "{{ influxdb3_quadlet_dir | expanduser }}"
+    state: directory
+    mode: "0700"
+    owner: "{{ influxdb3_service_user }}"
+    group: "{{ influxdb3_service_user }}"
+  become: true
+
+- name: Render shared network Quadlet unit
+  ansible.builtin.template:
+    src: influxdb3-net.network.j2
+    dest: "{{ influxdb3_quadlet_dir | expanduser }}/{{ influxdb3_shared_network_name }}.network"
+    owner: "{{ influxdb3_service_user }}"
+    group: "{{ influxdb3_service_user }}"
+    mode: "0640"
+  become: true
+  notify: "influxdb3 daemon-reload"
+
+- name: "Pre-create Podman network for container unit first-start: {{ influxdb3_shared_network_name }}"
+  containers.podman.podman_network:
+    name: "{{ influxdb3_shared_network_name }}"
+    state: present
+  become: true
+  become_user: "{{ influxdb3_service_user }}"

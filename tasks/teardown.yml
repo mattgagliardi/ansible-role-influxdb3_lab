@@ -1,0 +1,37 @@
+---
+# tasks/teardown.yml — remove instance service, unit files, and environment file
+# IMPORTANT: Named Podman volumes are NEVER deleted by this role.
+
+- name: "Stop and disable user scope service: influxdb3-{{ influxdb3_instance_name }}"
+  ansible.builtin.systemd:
+    name: "influxdb3-{{ influxdb3_instance_name }}.service"
+    state: stopped
+    enabled: false
+    scope: user
+  become: true
+  become_user: "{{ influxdb3_service_user }}"
+  failed_when: false
+
+- name: Remove container Quadlet unit file
+  ansible.builtin.file:
+    path: "{{ influxdb3_quadlet_dir | expanduser }}/influxdb3-{{ influxdb3_instance_name }}.container"
+    state: absent
+  become: true
+  notify: "influxdb3 daemon-reload"
+
+- name: Remove volume Quadlet unit file
+  # Removes the Quadlet unit file only — named volume data is NEVER deleted by this role
+  ansible.builtin.file:
+    path: "{{ influxdb3_quadlet_dir | expanduser }}/influxdb3-{{ influxdb3_instance_name }}.volume"
+    state: absent
+  become: true
+  notify: "influxdb3 daemon-reload"
+
+- name: Remove environment file
+  ansible.builtin.file:
+    path: "{{ influxdb3_env_file_path | expanduser }}"
+    state: absent
+  become: true
+
+- name: Flush handlers (ensures daemon-reload runs before teardown completes)
+  ansible.builtin.meta: flush_handlers

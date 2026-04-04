@@ -1,0 +1,35 @@
+---
+# tasks/user.yml — configure service user linger and config directory
+# IMPORTANT: This file MUST NOT contain any ansible.builtin.user task.
+# The service user MUST pre-exist on the target host (enforced by preflight).
+
+- name: Check if linger is already enabled for {{ influxdb3_service_user }}
+  ansible.builtin.stat:
+    path: "/var/lib/systemd/linger/{{ influxdb3_service_user }}"
+  register: _linger_stat
+  become: true
+
+- name: Enable linger for {{ influxdb3_service_user }}
+  ansible.builtin.command:
+    cmd: "loginctl enable-linger {{ influxdb3_service_user }}"
+  become: true
+  changed_when: not _linger_stat.stat.exists
+  when: not _linger_stat.stat.exists
+
+- name: Ensure influxdb3 config directory exists for service user
+  ansible.builtin.file:
+    path: "~{{ influxdb3_service_user }}/.config/influxdb3"
+    state: directory
+    mode: "0700"
+    owner: "{{ influxdb3_service_user }}"
+    group: "{{ influxdb3_service_user }}"
+  become: true
+
+- name: Initialise Podman user storage (prevents first-run race on network/volume unit creation)
+  ansible.builtin.command:
+    cmd: podman info
+  become: true
+  become_user: "{{ influxdb3_service_user }}"
+  register: _podman_info_result
+  changed_when: false
+  failed_when: _podman_info_result.rc != 0

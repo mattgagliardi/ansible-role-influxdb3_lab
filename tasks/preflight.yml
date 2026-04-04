@@ -1,0 +1,64 @@
+---
+# tasks/preflight.yml — pre-flight validation for metrics-aggregation role
+# All assertions use changed_when: false — they are read-only checks.
+
+- name: Assert influxdb3_instance_name is defined and matches required pattern
+  ansible.builtin.assert:
+    that:
+      - influxdb3_instance_name is defined
+      - influxdb3_instance_name | length > 0
+      - influxdb3_instance_name is match('^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$')
+    fail_msg: >-
+      influxdb3_instance_name is required and must match ^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$
+      (lower-case alphanumeric, hyphens allowed in interior, 3-30 chars).
+      Got: '{{ influxdb3_instance_name | default("") }}'
+    success_msg: "influxdb3_instance_name is defined and matches the required pattern ✓"
+  changed_when: false
+
+- name: Assert influxdb3_hostname is defined and non-empty
+  ansible.builtin.assert:
+    that:
+      - influxdb3_hostname is defined
+      - influxdb3_hostname | length > 0
+    fail_msg: "influxdb3_hostname is required and must not be empty."
+    success_msg: "influxdb3_hostname is defined and non-empty ✓"
+  changed_when: false
+
+- name: Preflight | Assert retention_days is a positive integer
+  ansible.builtin.assert:
+    that:
+      - influxdb3_retention_days | int >= 1
+    fail_msg: "influxdb3_retention_days must be an integer >= 1, got: {{ influxdb3_retention_days }}"
+  changed_when: false
+
+- name: Check that influxdb3_service_user exists on the target host
+  ansible.builtin.command:
+    cmd: "getent passwd {{ influxdb3_service_user }}"
+  register: _preflight_service_user_check
+  failed_when: _preflight_service_user_check.rc != 0
+  changed_when: false
+  when: not (influxdb3_allow_root_for_testing | bool)
+
+- name: Assert /etc/subuid contains an entry for influxdb3_service_user
+  ansible.builtin.command:
+    cmd: "grep -q '^{{ influxdb3_service_user }}:' /etc/subuid"
+  register: _preflight_subuid_check
+  failed_when: _preflight_subuid_check.rc != 0
+  changed_when: false
+  when: not (influxdb3_allow_root_for_testing | bool)
+
+- name: Assert /etc/subgid contains an entry for influxdb3_service_user
+  ansible.builtin.command:
+    cmd: "grep -q '^{{ influxdb3_service_user }}:' /etc/subgid"
+  register: _preflight_subgid_check
+  failed_when: _preflight_subgid_check.rc != 0
+  changed_when: false
+  when: not (influxdb3_allow_root_for_testing | bool)
+
+- name: Check that s3fs-fuse binary is available when S3-backed volume is requested
+  ansible.builtin.command:
+    cmd: "which s3fs"
+  register: _preflight_s3fs_check
+  failed_when: _preflight_s3fs_check.rc != 0
+  changed_when: false
+  when: "'fuse.s3fs' in (influxdb3_volume_options | default('*'))"

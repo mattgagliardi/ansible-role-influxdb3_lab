@@ -1,0 +1,31 @@
+---
+galaxy_info:
+  author: lab-automation
+  namespace: lab_automation
+  role_name: metrics_aggregation
+  description: >
+    Deploy and manage rootless InfluxDB 3 Core instances via Podman Quadlet.
+    Requires Podman >= 5.0 on the target host.
+  license: Apache-2.0
+  min_ansible_version: "2.15"
+  galaxy_tags:
+    - influxdb
+    - monitoring
+    - metrics
+    - timeseries
+    - database
+    - podman
+    - containers
+    - quadlet
+    - systemd
+  platforms:
+    - name: Fedora
+      versions:
+        - "39"
+        - "40"
+        - "41"
+    - name: EL
+      versions:
+        - "9"  # RHEL 9.3+ and CentOS Stream 9
+
+dependencies: []

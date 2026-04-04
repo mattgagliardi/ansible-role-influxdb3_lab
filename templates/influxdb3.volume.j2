@@ -1,0 +1,7 @@
+{# Managed by Ansible — metrics-aggregation role. Do not edit manually. #}
+{# Instance: {{ influxdb3_instance_name }} #}
+[Volume]
+Driver={{ influxdb3_volume_driver }}
+{% if influxdb3_volume_options | length > 0 %}
+Options={{ influxdb3_volume_options }}
+{% endif %}
