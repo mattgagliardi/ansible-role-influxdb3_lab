@@ -1,14 +1,11 @@
 ---
-# tasks/volume.yml — provision the named Podman volume Quadlet unit
-# The volume unit file name MUST be influxdb3-{{ influxdb3_instance_name }}.volume
-# Quadlet derives the volume name from this filename.
+# tasks/volume.yml — provision the named Podman volume Quadlet unit.
+# The volume unit file name MUST be influxdb3-{{ influxdb3_instance_name }}.volume —
+# Quadlet derives the Podman volume name from this filename.
 
 - name: Render volume Quadlet unit for instance {{ influxdb3_instance_name }}
   ansible.builtin.template:
     src: influxdb3.volume.j2
-    dest: "{{ influxdb3_quadlet_dir | expanduser }}/influxdb3-{{ influxdb3_instance_name }}.volume"
-    owner: "{{ influxdb3_service_user }}"
-    group: "{{ influxdb3_service_user }}"
+    dest: "{{ influxdb3_quadlet_dir }}/influxdb3-{{ influxdb3_instance_name }}.volume"
     mode: "0640"
-  become: true
   notify: "influxdb3 daemon-reload"

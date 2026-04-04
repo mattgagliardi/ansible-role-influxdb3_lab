@@ -6,8 +6,6 @@
     name: "influxdb3-{{ influxdb3_instance_name }}.service"
     scope: user
   register: _verify_svc_facts
-  become: true
-  become_user: "{{ influxdb3_service_user }}"
   changed_when: false
 
 - name: Assert service is active
@@ -19,31 +17,23 @@
 
 - name: Stat container unit file
   ansible.builtin.stat:
-    path: "{{ influxdb3_quadlet_dir | expanduser }}/influxdb3-{{ influxdb3_instance_name }}.container"
+    path: "{{ influxdb3_quadlet_dir }}/influxdb3-{{ influxdb3_instance_name }}.container"
   register: _verify_container_stat
-  become: true
-  become_user: "{{ influxdb3_service_user }}"
 
 - name: Stat volume unit file
   ansible.builtin.stat:
-    path: "{{ influxdb3_quadlet_dir | expanduser }}/influxdb3-{{ influxdb3_instance_name }}.volume"
+    path: "{{ influxdb3_quadlet_dir }}/influxdb3-{{ influxdb3_instance_name }}.volume"
   register: _verify_volume_stat
-  become: true
-  become_user: "{{ influxdb3_service_user }}"
 
 - name: Stat network unit file
   ansible.builtin.stat:
-    path: "{{ influxdb3_quadlet_dir | expanduser }}/{{ influxdb3_shared_network_name }}.network"
+    path: "{{ influxdb3_quadlet_dir }}/{{ influxdb3_shared_network_name }}.network"
   register: _verify_network_stat
-  become: true
-  become_user: "{{ influxdb3_service_user }}"
 
 - name: Stat environment file
   ansible.builtin.stat:
-    path: "{{ influxdb3_env_file_path | expanduser }}"
+    path: "{{ influxdb3_env_file_path }}"
   register: _verify_env_stat
-  become: true
-  become_user: "{{ influxdb3_service_user }}"
 
 - name: Assert all unit files and env file are present
   ansible.builtin.assert:
@@ -66,15 +56,13 @@
   ansible.builtin.command:
     cmd: "podman port influxdb3-{{ influxdb3_instance_name }}"
   register: _verify_port_output
-  become: true
-  become_user: "{{ influxdb3_service_user }}"
   changed_when: false
   failed_when: false
 
 - name: Assert loopback-only port binding
   ansible.builtin.assert:
     that:
-      - "'127.0.0.1:' ~ influxdb3_port in _verify_port_output.stdout"
-    fail_msg: "Expected loopback-only port binding 127.0.0.1:{{ influxdb3_port }} not found in: {{ _verify_port_output.stdout }}"
-    success_msg: "Port {{ influxdb3_port }} is bound on loopback only ✓"
+      - "'127.0.0.1:' ~ influxdb3_http_port in _verify_port_output.stdout"
+    fail_msg: "Expected loopback-only port binding 127.0.0.1:{{ influxdb3_http_port }} not found in: {{ _verify_port_output.stdout }}"
+    success_msg: "Port {{ influxdb3_http_port }} is bound on loopback only ✓"
   when: _verify_port_output.rc == 0

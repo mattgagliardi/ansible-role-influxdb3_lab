@@ -10,55 +10,72 @@
       - influxdb3_instance_name is match('^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$')
     fail_msg: >-
       influxdb3_instance_name is required and must match ^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$
-      (lower-case alphanumeric, hyphens allowed in interior, 3-30 chars).
+      (lower-case alphanumeric, hyphens in interior only, 3-30 chars).
+      Set influxdb3_instance_name or the shared lab_instance_name variable.
       Got: '{{ influxdb3_instance_name | default("") }}'
     success_msg: "influxdb3_instance_name is defined and matches the required pattern ✓"
   changed_when: false
 
-- name: Assert influxdb3_hostname is defined and non-empty
+- name: Assert influxdb3_traefik_domain is defined and non-empty
   ansible.builtin.assert:
     that:
-      - influxdb3_hostname is defined
-      - influxdb3_hostname | length > 0
-    fail_msg: "influxdb3_hostname is required and must not be empty."
-    success_msg: "influxdb3_hostname is defined and non-empty ✓"
+      - influxdb3_traefik_domain is defined
+      - influxdb3_traefik_domain | length > 0
+    fail_msg: >-
+      influxdb3_traefik_domain is required and must not be empty.
+      Set influxdb3_traefik_domain or the shared lab_traefik_domain variable.
+    success_msg: "influxdb3_traefik_domain is defined and non-empty ✓"
   changed_when: false
 
-- name: Preflight | Assert retention_days is a positive integer
+- name: Assert influxdb3_retention_days is a positive integer
   ansible.builtin.assert:
     that:
       - influxdb3_retention_days | int >= 1
     fail_msg: "influxdb3_retention_days must be an integer >= 1, got: {{ influxdb3_retention_days }}"
   changed_when: false
 
-- name: Check that influxdb3_service_user exists on the target host
-  ansible.builtin.command:
-    cmd: "getent passwd {{ influxdb3_service_user }}"
-  register: _preflight_service_user_check
-  failed_when: _preflight_service_user_check.rc != 0
+- name: Assert influxdb3_storage_backend is valid
+  ansible.builtin.assert:
+    that:
+      - influxdb3_storage_backend in ['local', 's3']
+    fail_msg: >-
+      influxdb3_storage_backend must be "local" or "s3",
+      got "{{ influxdb3_storage_backend }}".
   changed_when: false
-  when: not (influxdb3_allow_root_for_testing | bool)
 
-- name: Assert /etc/subuid contains an entry for influxdb3_service_user
-  ansible.builtin.command:
-    cmd: "grep -q '^{{ influxdb3_service_user }}:' /etc/subuid"
-  register: _preflight_subuid_check
-  failed_when: _preflight_subuid_check.rc != 0
+- name: Assert influxdb3_s3_mount_path is defined and non-empty (s3 backend only)
+  ansible.builtin.assert:
+    that:
+      - influxdb3_s3_mount_path is defined
+      - influxdb3_s3_mount_path | length > 0
+    fail_msg: >-
+      influxdb3_s3_mount_path is required when influxdb3_storage_backend is "s3".
+      It must be the absolute path where s3fs-fuse has mounted the S3 bucket.
+  when: influxdb3_storage_backend == 's3'
   changed_when: false
-  when: not (influxdb3_allow_root_for_testing | bool)
 
-- name: Assert /etc/subgid contains an entry for influxdb3_service_user
-  ansible.builtin.command:
-    cmd: "grep -q '^{{ influxdb3_service_user }}:' /etc/subgid"
-  register: _preflight_subgid_check
-  failed_when: _preflight_subgid_check.rc != 0
-  changed_when: false
-  when: not (influxdb3_allow_root_for_testing | bool)
+- name: Check s3fs mountpoint exists and is a mountpoint (s3 backend only)
+  ansible.builtin.stat:
+    path: "{{ influxdb3_s3_mount_path }}"
+  register: _s3_mount_stat
+  when: influxdb3_storage_backend == 's3'
 
-- name: Check that s3fs-fuse binary is available when S3-backed volume is requested
-  ansible.builtin.command:
-    cmd: "which s3fs"
-  register: _preflight_s3fs_check
-  failed_when: _preflight_s3fs_check.rc != 0
-  changed_when: false
-  when: "'fuse.s3fs' in (influxdb3_volume_options | default('*'))"
+- name: Assert s3fs mountpoint is valid (s3 backend only)
+  ansible.builtin.assert:
+    that:
+      - _s3_mount_stat.stat.exists
+      - _s3_mount_stat.stat.ismount
+    fail_msg: >-
+      influxdb3_s3_mount_path "{{ influxdb3_s3_mount_path }}" is not a mountpoint.
+      Ensure s3fs-fuse is mounted before running this role.
+      Command to verify: mountpoint -q {{ influxdb3_s3_mount_path }}
+  when: influxdb3_storage_backend == 's3'
+
+- name: Assert the role is not running as root
+  ansible.builtin.assert:
+    that:
+      - ansible_user_id != 'root'
+    fail_msg: >-
+      This role must run as a non-root user. Rootless Podman requires a regular
+      user account. Re-run without become: true or switch to a non-root user.
+  when: not (influxdb3_allow_root_for_testing | bool)

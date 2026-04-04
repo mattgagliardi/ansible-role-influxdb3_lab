@@ -4,21 +4,13 @@
 - name: Render environment file for instance {{ influxdb3_instance_name }}
   ansible.builtin.template:
     src: influxdb3.env.j2
-    dest: "{{ influxdb3_env_file_path | expanduser }}"
-    owner: "{{ influxdb3_service_user }}"
-    group: "{{ influxdb3_service_user }}"
+    dest: "{{ influxdb3_env_file_path }}"
     mode: "0600"
-  become: true
-  # no_log not needed — env file does not contain pre-set secrets at deploy time;
-  # InfluxDB 3 Core generates its admin token post-deploy.
   register: env_file_result
 
 - name: Render container Quadlet unit for instance {{ influxdb3_instance_name }}
   ansible.builtin.template:
     src: influxdb3.container.j2
-    dest: "{{ influxdb3_quadlet_dir | expanduser }}/influxdb3-{{ influxdb3_instance_name }}.container"
-    owner: "{{ influxdb3_service_user }}"
-    group: "{{ influxdb3_service_user }}"
+    dest: "{{ influxdb3_quadlet_dir }}/influxdb3-{{ influxdb3_instance_name }}.container"
     mode: "0640"
-  become: true
   notify: "influxdb3 daemon-reload"

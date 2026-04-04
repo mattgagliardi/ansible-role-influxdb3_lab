@@ -1,32 +1,19 @@
 ---
 # defaults/main.yml — metrics-aggregation role variable defaults
 # All variables use the influxdb3_ prefix.
-# Variables marked "REQUIRED — no default" cause a preflight failure if not supplied.
+# Variables with an empty-string default cause a preflight failure if not supplied
+# (the preflight asserts length > 0). Supply the value directly or via the shared
+# lab_* playbook variables where noted.
 
 # -----------------------------------------------------------------------------
-# Required variables (no defaults)
+# Instance name
 # -----------------------------------------------------------------------------
 
-# influxdb3_instance_name:  # REQUIRED — no default
-#   Unique identifier for this instance on the target host.
-#   Used in container name, volume name, unit file names, and Traefik router.
-#   Pattern: ^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$  (e.g. "lab1")
-
-# influxdb3_hostname:  # REQUIRED — no default
-#   FQDN used in the Traefik Host() routing rule.
-#   Must match the TLS certificate configured in Traefik.
-
-# -----------------------------------------------------------------------------
-# Optional reference variable
-# -----------------------------------------------------------------------------
-
-# influxdb3_admin_token:  # OPTIONAL — no default, not used by the role at deploy time
-#   InfluxDB 3 Core does not accept a pre-set admin token via environment variable;
-#   the token is created post-deploy with:
-#     podman exec influxdb3-<instance> influxdb3 create token --admin
-#   Supply this variable (Vault-encrypted) as a reference for downstream consumers
-#   (e.g. a Grafana datasource role or the export procedure in README.md).
-#   The role does not validate or render this variable.
+# Unique identifier for this instance on the target host.
+# Used in container name, volume name, unit file names, and Traefik router.
+# Pattern: ^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$  (e.g. "lab1")
+# Falls back to lab_instance_name if set at the playbook level.
+influxdb3_instance_name: "{{ lab_instance_name | default('') }}"
 
 # -----------------------------------------------------------------------------
 # Container image
@@ -42,7 +29,7 @@ influxdb3_image: "docker.io/influxdb:3-core"
 
 # HTTP API port InfluxDB 3 listens on inside the container.
 # InfluxDB 3 changed the default from 8086 (v2) to 8181 (v3).
-influxdb3_port: 8181
+influxdb3_http_port: 8181
 
 # Name of the Podman network all instances on this host attach to.
 # Set this to the name of a pre-existing network if one already exists on the target host;
@@ -50,8 +37,18 @@ influxdb3_port: 8181
 # All instances on the same host must use the same value.
 influxdb3_shared_network_name: "influxdb3-net"
 
-# Traefik entrypoint name.  Must match the TLS entrypoint in your Traefik config.
-influxdb3_traefik_entrypoint: "websecure"
+# -----------------------------------------------------------------------------
+# Traefik integration
+# -----------------------------------------------------------------------------
+
+# Domain used to build the per-instance subdomain routing rule:
+#   Host(`<instance>.influxdb3.<domain>`)
+# Falls back to lab_traefik_domain if set at the playbook level.
+influxdb3_traefik_domain: "{{ lab_traefik_domain | default('') }}"
+
+# Traefik entrypoint name. Must match the TLS entrypoint in your Traefik config.
+# Falls back to lab_traefik_entrypoint if set at the playbook level.
+influxdb3_traefik_entrypoint: "{{ lab_traefik_entrypoint | default('websecure') }}"
 
 # -----------------------------------------------------------------------------
 # Data and retention
@@ -59,32 +56,27 @@ influxdb3_traefik_entrypoint: "websecure"
 
 # Default database retention period in days.
 # InfluxDB 3 Core enforces retention per-database, not server-wide.
-# This value is used when creating databases post-deployment via the CLI or API.
-# There is no server-level retention env var; see the quickstart guide.
 influxdb3_retention_days: 90
 
 # -----------------------------------------------------------------------------
-# Storage volume
+# Storage
 # -----------------------------------------------------------------------------
 
-# Podman volume driver.  "local" works for plain local storage;
-# S3-backed storage is enabled via influxdb3_volume_options below.
-influxdb3_volume_driver: "local"
+# Storage backend: "local" (standard Podman-managed volume) or
+# "s3" (s3fs-fuse bind-mount via .volume unit file).
+influxdb3_storage_backend: "local"
 
-# Comma-separated volume --opt string for the Quadlet .volume Options= directive.
-# Empty string = plain local volume with no special options.
-# S3 example: "type=fuse.s3fs,device=mybucket:/myprefix,o=use_xattr,endpoint=us-east-1"
-influxdb3_volume_options: ""
+# Absolute path to a live s3fs-fuse mountpoint on the target host.
+# Required when influxdb3_storage_backend == "s3". No default — preflight fails if absent.
+# influxdb3_s3_mount_path: "/mnt/s3/influxdb3"
 
 # -----------------------------------------------------------------------------
 # Service user
 # -----------------------------------------------------------------------------
 
-# Local non-privileged user that owns rootless containers and systemd user units.
-# The account MUST pre-exist on the target host — this role never creates users.
-influxdb3_service_user: "influxdb3"
-
-# Set to true only in CI/testing to bypass service user preflight assertions.
+# This role runs as the Ansible connecting user (ansible_user_id).
+# No dedicated service account is created or required.
+# Set to true only in CI/testing where the connecting user is root.
 # Never set true in production.
 influxdb3_allow_root_for_testing: false
 
@@ -93,11 +85,11 @@ influxdb3_allow_root_for_testing: false
 # -----------------------------------------------------------------------------
 
 # Directory where Quadlet unit files (.container, .volume, .network) are placed.
-influxdb3_quadlet_dir: "~{{ influxdb3_service_user }}/.config/containers/systemd"
+influxdb3_quadlet_dir: "{{ ansible_user_dir }}/.config/containers/systemd"
 
 # Path to the environment file that holds INFLUXDB3_ server config vars.
-# Created mode 0600, owned by influxdb3_service_user.
-influxdb3_env_file_path: "~{{ influxdb3_service_user }}/.config/influxdb3/{{ influxdb3_instance_name }}.env"
+# Created mode 0600, owned by the Ansible connecting user.
+influxdb3_env_file_path: "{{ ansible_user_dir }}/.config/influxdb3/{{ influxdb3_instance_name }}.env"
 
 # -----------------------------------------------------------------------------
 # Lifecycle

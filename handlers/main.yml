@@ -5,6 +5,4 @@
   ansible.builtin.systemd:
     daemon_reload: true
     scope: user
-  become: true
-  become_user: "{{ influxdb3_service_user }}"
   listen: "influxdb3 daemon-reload"

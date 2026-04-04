@@ -8,30 +8,25 @@
     state: stopped
     enabled: false
     scope: user
-  become: true
-  become_user: "{{ influxdb3_service_user }}"
   failed_when: false
 
 - name: Remove container Quadlet unit file
   ansible.builtin.file:
-    path: "{{ influxdb3_quadlet_dir | expanduser }}/influxdb3-{{ influxdb3_instance_name }}.container"
+    path: "{{ influxdb3_quadlet_dir }}/influxdb3-{{ influxdb3_instance_name }}.container"
     state: absent
-  become: true
   notify: "influxdb3 daemon-reload"
 
 - name: Remove volume Quadlet unit file
   # Removes the Quadlet unit file only — named volume data is NEVER deleted by this role
   ansible.builtin.file:
-    path: "{{ influxdb3_quadlet_dir | expanduser }}/influxdb3-{{ influxdb3_instance_name }}.volume"
+    path: "{{ influxdb3_quadlet_dir }}/influxdb3-{{ influxdb3_instance_name }}.volume"
     state: absent
-  become: true
   notify: "influxdb3 daemon-reload"
 
 - name: Remove environment file
   ansible.builtin.file:
-    path: "{{ influxdb3_env_file_path | expanduser }}"
+    path: "{{ influxdb3_env_file_path }}"
     state: absent
-  become: true
 
 - name: Flush handlers (ensures daemon-reload runs before teardown completes)
   ansible.builtin.meta: flush_handlers

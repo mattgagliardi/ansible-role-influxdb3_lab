@@ -10,21 +10,18 @@
     state: started
     enabled: true
     scope: user
-  become: true
-  become_user: "{{ influxdb3_service_user }}"
+    daemon_reload: true
 
 - name: Restart service when environment file changed
   ansible.builtin.systemd:
     name: "influxdb3-{{ influxdb3_instance_name }}.service"
     state: restarted
     scope: user
-  become: true
-  become_user: "{{ influxdb3_service_user }}"
   when: env_file_result is defined and env_file_result.changed
 
 - name: Poll /ping endpoint until InfluxDB 3 is ready
   ansible.builtin.uri:
-    url: "http://localhost:{{ influxdb3_port }}/ping"
+    url: "http://localhost:{{ influxdb3_http_port }}/ping"
     method: GET
     status_code: [200, 204]
   register: _health_check
