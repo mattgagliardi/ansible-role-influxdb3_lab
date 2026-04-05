@@ -1,7 +1,7 @@
 ---
 galaxy_info:
-  author: lab-automation
-  namespace: lab_automation
+  author: mattgagliardi
+  namespace: mattgagliardi
   role_name: metrics_aggregation
   description: >
     Deploy and manage rootless InfluxDB 3 Core instances via Podman Quadlet.
