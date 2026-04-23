@@ -19,13 +19,13 @@
     scope: user
   when: env_file_result is defined and env_file_result.changed
 
-- name: Poll /ping endpoint until InfluxDB 3 is ready
-  ansible.builtin.uri:
-    url: "http://localhost:{{ influxdb3_http_port }}/ping"
-    method: GET
-    status_code: [200, 204]
+- name: Wait for InfluxDB 3 readiness (internal check)
+  ansible.builtin.command:
+    cmd: >
+      podman exec influxdb3-{{ influxdb3_instance_name }}
+      curl -sf http://localhost:{{ influxdb3_http_port }}/ping
   register: _health_check
   retries: "{{ (influxdb3_startup_timeout_seconds | int / 5) | int }}"
   delay: 5
-  until: _health_check.status in [200, 204]
+  until: _health_check.rc == 0
   changed_when: false

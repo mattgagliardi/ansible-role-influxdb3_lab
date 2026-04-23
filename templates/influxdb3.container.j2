@@ -2,16 +2,15 @@
 {# Instance: {{ influxdb3_instance_name }} #}
 [Unit]
 Description=InfluxDB 3 Core — instance {{ influxdb3_instance_name }}
-After=network-online.target influxdb3-{{ influxdb3_instance_name }}-volume.service {{ influxdb3_shared_network_name }}-network.service
-Requires=influxdb3-{{ influxdb3_instance_name }}-volume.service {{ influxdb3_shared_network_name }}-network.service
+After=network-online.target influxdb3-{{ influxdb3_instance_name }}-volume.service
+Requires=influxdb3-{{ influxdb3_instance_name }}-volume.service
 
 [Container]
 Image={{ influxdb3_image }}
 ContainerName=influxdb3-{{ influxdb3_instance_name }}
 Volume=influxdb3-{{ influxdb3_instance_name }}.volume:/var/lib/influxdb3:Z
-Network={{ influxdb3_shared_network_name }}.network
+Network={{ influxdb3_podman_network }}
 EnvironmentFile={{ influxdb3_env_file_path }}
-PublishPort=127.0.0.1:{{ influxdb3_http_port }}:{{ influxdb3_http_port }}
 # Disable auth on health/ping so Traefik and monitoring tools can probe without a token
 Exec=influxdb3 serve --disable-authz health,ping
 
@@ -19,7 +18,9 @@ Exec=influxdb3 serve --disable-authz health,ping
 Label=traefik.enable=true
 Label=traefik.http.routers.influxdb3-{{ influxdb3_instance_name }}.rule=Host(`{{ influxdb3_instance_name }}.influxdb3.{{ influxdb3_traefik_domain }}`)
 Label=traefik.http.routers.influxdb3-{{ influxdb3_instance_name }}.entrypoints={{ influxdb3_traefik_entrypoint }}
+{% if influxdb3_traefik_entrypoint != 'web' %}
 Label=traefik.http.routers.influxdb3-{{ influxdb3_instance_name }}.tls=true
+{% endif %}
 Label=traefik.http.services.influxdb3-{{ influxdb3_instance_name }}.loadbalancer.server.port={{ influxdb3_http_port }}
 
 [Service]

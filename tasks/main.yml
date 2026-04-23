@@ -1,34 +1,38 @@
 ---
 # tasks/main.yml — metrics-aggregation role dispatcher
-# Import order: preflight → user → network → volume → container → service → verify
+# Import order: preflight → user → volume → container → service → verify
 # On teardown: preflight → teardown
 
 - name: Run pre-flight validation
   ansible.builtin.import_tasks: preflight.yml
+  tags: [preflight]
 
 - name: Deploy instance
   when: not influxdb3_teardown | bool
   block:
     - name: Configure service user linger and config directory
       ansible.builtin.import_tasks: user.yml
-
-    - name: Provision shared Podman network
-      ansible.builtin.import_tasks: network.yml
+      tags: [user]
 
     - name: Provision data volume
       ansible.builtin.import_tasks: volume.yml
+      tags: [volume]
 
     - name: Render container unit and environment file
       ansible.builtin.import_tasks: container.yml
+      tags: [container]
 
     - name: Start and enable systemd user service
       ansible.builtin.import_tasks: service.yml
+      tags: [service]
 
     - name: Run post-deploy smoke checks
       ansible.builtin.import_tasks: verify.yml
+      tags: [verify]
 
 - name: Teardown instance
   when: influxdb3_teardown | bool
   block:
     - name: Remove instance service, unit files, and environment file
       ansible.builtin.import_tasks: teardown.yml
+      tags: [teardown]

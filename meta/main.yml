@@ -26,6 +26,9 @@ galaxy_info:
         - "41"
     - name: EL
       versions:
-        - "9"  # RHEL 9.3+ and CentOS Stream 9
+        - "9" # RHEL 9.3+ and CentOS Stream 9
 
 dependencies: []
+# Collection dependency: containers.podman >= 1.10.0
+# Declared in requirements.yml — install with:
+#   ansible-galaxy collection install -r requirements.yml

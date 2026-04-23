@@ -31,11 +31,10 @@ influxdb3_image: "docker.io/influxdb:3-core"
 # InfluxDB 3 changed the default from 8086 (v2) to 8181 (v3).
 influxdb3_http_port: 8181
 
-# Name of the Podman network all instances on this host attach to.
-# Set this to the name of a pre-existing network if one already exists on the target host;
-# the role will create the network if it does not already exist.
-# All instances on the same host must use the same value.
-influxdb3_shared_network_name: "influxdb3-net"
+# Name of a pre-existing Podman network the container should attach to.
+# Defaults to "podman" (the built-in bridge network). Set this to the name of a
+# shared network (e.g. one managed by Traefik) when reverse-proxy discovery is needed.
+influxdb3_podman_network: "podman"
 
 # -----------------------------------------------------------------------------
 # Traefik integration
@@ -84,7 +83,7 @@ influxdb3_allow_root_for_testing: false
 # Derived path variables
 # -----------------------------------------------------------------------------
 
-# Directory where Quadlet unit files (.container, .volume, .network) are placed.
+# Directory where Quadlet unit files (.container, .volume) are placed.
 influxdb3_quadlet_dir: "{{ ansible_user_dir }}/.config/containers/systemd"
 
 # Path to the environment file that holds INFLUXDB3_ server config vars.

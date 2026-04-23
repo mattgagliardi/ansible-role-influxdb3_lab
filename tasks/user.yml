@@ -19,7 +19,13 @@
     state: directory
     mode: "0700"
 
-- name: Initialise Podman user storage (prevents first-run race on network/volume unit creation)
+- name: Ensure Quadlet unit directory exists
+  ansible.builtin.file:
+    path: "{{ influxdb3_quadlet_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Initialise Podman user storage (prevents first-run race on volume unit creation)
   ansible.builtin.command:
     cmd: podman info
   register: _podman_info_result
