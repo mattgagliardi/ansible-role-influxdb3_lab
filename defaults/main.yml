@@ -91,6 +91,19 @@ influxdb3_quadlet_dir: "{{ ansible_user_dir }}/.config/containers/systemd"
 influxdb3_env_file_path: "{{ ansible_user_dir }}/.config/influxdb3/{{ influxdb3_instance_name }}.env"
 
 # -----------------------------------------------------------------------------
+# Authentication
+# -----------------------------------------------------------------------------
+
+# Enable InfluxDB 3 authentication. When false (default), the server starts
+# with --without-auth and accepts unauthenticated requests on all endpoints.
+# When true, auth is active for write/query endpoints; health and /ping
+# remain unauthenticated so monitoring probes continue to work.
+#
+# This role does NOT create the admin token. After deploy, generate one with:
+#   podman exec influxdb3-<instance> influxdb3 create token --admin
+influxdb3_auth_enabled: false
+
+# -----------------------------------------------------------------------------
 # Lifecycle
 # -----------------------------------------------------------------------------
 

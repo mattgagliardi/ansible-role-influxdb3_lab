@@ -11,8 +11,15 @@ ContainerName=influxdb3-{{ influxdb3_instance_name }}
 Volume=influxdb3-{{ influxdb3_instance_name }}.volume:/var/lib/influxdb3:Z
 Network={{ influxdb3_podman_network }}
 EnvironmentFile={{ influxdb3_env_file_path }}
-# Disable auth on health/ping so Traefik and monitoring tools can probe without a token
+{% if influxdb3_auth_enabled | bool %}
+# Auth enabled: health/ping remain unauthenticated so probes work without a token.
+# Generate an admin token with:
+#   podman exec influxdb3-{{ influxdb3_instance_name }} influxdb3 create token --admin
 Exec=influxdb3 serve --disable-authz health,ping
+{% else %}
+# Auth disabled (default): server runs without authentication on any endpoint.
+Exec=influxdb3 serve --without-auth
+{% endif %}
 
 # Traefik discovery labels
 Label=traefik.enable=true

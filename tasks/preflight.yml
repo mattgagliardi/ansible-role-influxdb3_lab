@@ -79,3 +79,13 @@
       This role must run as a non-root user. Rootless Podman requires a regular
       user account. Re-run without become: true or switch to a non-root user.
   when: not (influxdb3_allow_root_for_testing | bool)
+
+- name: Assert influxdb3_auth_enabled is a boolean
+  ansible.builtin.assert:
+    that:
+      - >-
+        influxdb3_auth_enabled is boolean
+        or (influxdb3_auth_enabled | string | lower) in ['true', 'false', 'yes', 'no']
+    fail_msg: "influxdb3_auth_enabled must be a boolean, got: {{ influxdb3_auth_enabled }}"
+    success_msg: "influxdb3_auth_enabled is a valid boolean ✓"
+  changed_when: false
